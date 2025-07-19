@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Robot Arm Control</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 30px;
+      background: #f5f5f5;
+    }
+
+    h2 { color: #333; }
+
+    .slider-box {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: inline-block;
+      width: 70px;
+    }
+
+    input[type=range] {
+      width: 300px;
+      accent-color: #b39ddb; 
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      background: #6a1b9a;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #4a148c;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+      background-color: #fff;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #ede7f6; 
+    }
+
+    tr:hover {
+      background-color: #f3e5f5;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Robot Arm Control</h2>
+
+<div id="sliders"></div>
+
+<button onclick="resetSliders()">Reset</button>
+<button onclick="savePose()">Save Pose</button>
+<button onclick="runPose()">Run</button>
+
+<table id="poseTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Motor 1</th><th>Motor 2</th><th>Motor 3</th>
+      <th>Motor 4</th><th>Motor 5</th><th>Motor 6</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const slidersDiv = document.getElementById('sliders');
+let sliders = [];
+
+for (let i = 1; i <= 6; i++) {
+  let div = document.createElement('div');
+  div.className = 'slider-box';
+  div.innerHTML = `<label>Motor ${i}:</label>
+    <input type="range" min="0" max="180" value="90" id="motor${i}">
+    <span id="val${i}">90</span>`;
+  slidersDiv.appendChild(div);
+
+  let slider = document.getElementById(`motor${i}`);
+  let valSpan = document.getElementById(`val${i}`);
+
+  slider.oninput = () => valSpan.innerText = slider.value;
+  sliders.push(slider);
+}
+
+function resetSliders() {
+  sliders.forEach(slider => {
+    slider.value = 90;
+    document.getElementById(`val${slider.id.slice(5)}`).innerText = 90;
+  });
+}
+
+function savePose() {
+  const values = sliders.map(sl => sl.value);
+  fetch('save_pose.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ motors: values })
+  }).then(() => loadTable());
+}
+
+function loadTable() {
+  fetch('get_run_pose.php')
+    .then(res => res.json())
+    .then(data => {
+      const tbody = document.querySelector("#poseTable tbody");
+      tbody.innerHTML = '';
+      data.forEach((row, i) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${i+1}</td>
+            <td>${row.motor1}</td>
+            <td>${row.motor2}</td>
+            <td>${row.motor3}</td>
+            <td>${row.motor4}</td>
+            <td>${row.motor5}</td>
+            <td>${row.motor6}</td>
+            <td>
+              <button onclick="runSpecific(${row.id})">Load</button>
+              <button onclick="removePose(${row.id})">Remove</button>
+            </td>
+          </tr>
+        `;
+      });
+    });
+}
+
+function runPose() {
+  alert("Running current pose!");
+}
+
+function runSpecific(id) {
+  fetch('update_status.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'id=' + id
+  }).then(() => alert("Pose Loaded & Status set to 0"));
+}
+
+function removePose(id) {
+  fetch('delete_pose.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'id=' + id
+  }).then(() => loadTable());
+}
+
+loadTable();
+</script>
+</body>
+</html>
